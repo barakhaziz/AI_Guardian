@@ -675,37 +675,37 @@ def create_app():
     return app
 
 
-def main():
-    """Main entry point for the application"""
-    print("🛡️  AI Safety Protection Layer")
-    print("=" * 40)
-    
-    # Initialize models
-    print("Loading models...")
-    try:
-        initialize_models()
-        print("✅ Models loaded successfully!")
-    except Exception as e:
-        print(f"❌ Failed to load models: {e}")
-        return 1
-    
-    # Run the app
-    port = int(os.getenv('PORT', 5000))
-    debug = os.getenv('DEBUG', 'False').lower() == 'true'
-    
-    print(f"\n🚀 Starting server on http://localhost:{port}")
-    print("\nAvailable endpoints:")
-    print("  GET  /                  - Web UI")
-    print("  GET  /health           - Health check")
-    print("  POST /check_input      - Check input safety")
-    print("  POST /generate_response - Generate safe response")
-    print("  POST /test_safety      - Test safety checking")
-    print("\n" + "=" * 40)
-    
-    logger.info(f"Starting AI Safety Protection Layer on port {port}")
-    app.run(host='0.0.0.0', port=port, debug=debug)
-    return 0
-
-
-if __name__ == '__main__':
-    main() 
+# def main():
+#     """Main entry point for the application"""
+#     print("🛡️  AI Safety Protection Layer")
+#     print("=" * 40)
+#
+#     # Initialize models
+#     print("Loading models...")
+#     try:
+#         initialize_models()
+#         print("✅ Models loaded successfully!")
+#     except Exception as e:
+#         print(f"❌ Failed to load models: {e}")
+#         return 1
+#
+#     # Run the app
+#     port = int(os.getenv('PORT', 5000))
+#     debug = False
+#
+#     print(f"\n🚀 Starting server on http://localhost:{port}")
+#     print("\nAvailable endpoints:")
+#     print("  GET  /                  - Web UI")
+#     print("  GET  /health           - Health check")
+#     print("  POST /check_input      - Check input safety")
+#     print("  POST /generate_response - Generate safe response")
+#     print("  POST /test_safety      - Test safety checking")
+#     print("\n" + "=" * 40)
+#
+#     logger.info(f"Starting AI Safety Protection Layer on port {port}")
+#     app.run(host='0.0.0.0', port=port, debug=debug)
+#     return 0
+#
+#
+# if __name__ == '__main__':
+#     main()
