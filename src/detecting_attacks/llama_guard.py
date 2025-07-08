@@ -9,14 +9,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def get_device():
-    """Get the best available device for the current system"""
+import torch, os, logging
+logger = logging.getLogger(__name__)
+
+def get_device(preferred_gpu: int | None = 0) -> str:
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}")
     if torch.cuda.is_available():
-        return "cuda"
-    elif torch.backends.mps.is_available():
-        return "mps"
-    else:
-        return "cpu"
+        return 'cuda'
+
 
 
 class JudgeLLM:
@@ -55,12 +56,13 @@ class JudgeLLM:
                 )
                 self.model = self.model.to(self.device)
             elif self.device == "cuda":
-                # For CUDA, use device_map and float16
+                # For CUDA, load model and move it manually to the correct device
                 self.model = AutoModelForCausalLM.from_pretrained(
                     model_name,
-                    device_map="auto",
-                    torch_dtype=torch.float16
+                    torch_dtype=torch.float16,
+                    low_cpu_mem_usage=True
                 )
+                self.model = self.model.to(self.device)
             else:
                 # For CPU, use float32
                 self.model = AutoModelForCausalLM.from_pretrained(

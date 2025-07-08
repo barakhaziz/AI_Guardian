@@ -4,6 +4,7 @@ Simple runner script for the AI Safety Protection Layer
 """
 import os
 import sys
+import torch
 
 # Add the src directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
@@ -13,7 +14,7 @@ if __name__ == '__main__':
     
     print("🛡️  AI Safety Protection Layer")
     print("=" * 40)
-    
+
     # Initialize models
     print("Loading models...")
     try:
@@ -25,7 +26,7 @@ if __name__ == '__main__':
     
     # Run the app
     port = int(os.getenv('PORT', 5000))
-    debug = os.getenv('DEBUG', 'False').lower() == 'true'
+    debug = False
     
     print(f"\n🚀 Starting server on http://localhost:{port}")
     print("\nAvailable endpoints:")
