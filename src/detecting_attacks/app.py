@@ -10,7 +10,7 @@ from .llama_guard import JudgeLLM
 from .target_llm import TargetLLM, HuggingFaceLLM, OpenAILLM
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,9 +31,10 @@ def initialize_models():
     try:
         # Initialize Llama Guard for safety checking
         guard_model = os.getenv("GUARD_MODEL", "meta-llama/Llama-Guard-3-8B")
+        ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")
         logger.info(f"Initializing safety judge with model: {guard_model}")
-        safety_judge = JudgeLLM(model_name=guard_model)
-        
+        safety_judge = JudgeLLM(model_name=guard_model, ollama_url=ollama_url)
+
         # Initialize target LLM
         target_model = os.getenv("TARGET_MODEL", "microsoft/DialoGPT-medium")
         target_model_type = os.getenv("TARGET_MODEL_TYPE", "huggingface")
@@ -521,7 +522,7 @@ def check_input():
         user_input = data['user_input']
         
         # Check if input is safe
-        logger.info(f"Checking input safety for: {user_input[:50]}...")
+        logger.info(f"Checking input safety for: {user_input}")
         safety_result = safety_judge.judge_input(user_input)
         
         is_safe = safety_result == "safe"
@@ -578,14 +579,14 @@ def generate_response():
         user_input = data['user_input']
         
         # First, check if input is safe
-        logger.info(f"Checking input safety for: {user_input[:50]}...")
+        logger.info(f"Checking input safety for: {user_input}")
         input_safety = safety_judge.judge_input(user_input)
         
         if input_safety != "safe":
             return jsonify({
                 "safe": False,
                 "user_input": user_input,
-                "message": "Input is unsafe and has been blocked",
+                "message": "Input is unsafe and has been blocked at input stage",
                 "stage": "input_check"
             })
         

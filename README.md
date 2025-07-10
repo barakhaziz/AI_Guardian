@@ -5,6 +5,12 @@ AI safety protection system - Flask application that adds safety checks to LLM m
 # How to Install
 ## Run Ollama
 Please follow [this guide](./docs/ollama/ollama_cluster_guide.md) on how to run ollama using BGU's cluster
+
+make sure you pull the following models:
+```bash
+ollama pull llama-guard3
+```
+
 ## Create `.env`
 ```bash
 PORT=5001
@@ -17,7 +23,7 @@ For production use - replace with `meta-llama/Llama-Guard-3-8B`
 ## Create a new python environment
 ```bash
 python -m venv .venv
-pip install -r requiremnets.txt
+pip install -r uv
 ```
 
 ## 
