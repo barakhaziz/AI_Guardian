@@ -2,11 +2,33 @@
 
 AI safety protection system - Flask application that adds safety checks to LLM models.
 
+# How to Install
+## Run Ollama
+Please follow [this guide](./docs/ollama/ollama_cluster_guide.md) on how to run ollama using BGU's cluster
+## Create `.env`
+```bash
+PORT=5001
+GUARD_MODEL=microsoft/DialoGPT-small  # for testing
+TARGET_MODEL=microsoft/DialoGPT-small
+TARGET_MODEL_TYPE=huggingface
+```
+
+For production use - replace with `meta-llama/Llama-Guard-3-8B`
+## Create a new python environment
+```bash
+python -m venv .venv
+pip install -r requiremnets.txt
+```
+
+## 
+```bash
+uv sync
+```
+
+# How to Run
 ## 🚀 Quick Start
 
-```bash
-# Install dependencies
-uv sync
+
 
 # Start the server
 uv run python run_app.py
@@ -23,14 +45,7 @@ Server will run on: `http://localhost:5001`
 
 ## 🔧 Configuration (.env file)
 
-```bash
-PORT=5001
-GUARD_MODEL=microsoft/DialoGPT-small  # for testing
-TARGET_MODEL=microsoft/DialoGPT-small
-TARGET_MODEL_TYPE=huggingface
-```
 
-For production use - replace with `meta-llama/Llama-Guard-3-8B`
 
 ## 💡 Usage Examples
 

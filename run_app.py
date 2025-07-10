@@ -5,13 +5,14 @@ Simple runner script for the AI Safety Protection Layer
 import os
 import sys
 import torch
-
+import logging
+import logging
 # Add the src directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 if __name__ == '__main__':
     from detecting_attacks.app import app, initialize_models
-    
+    app.logger.setLevel(logging.INFO)
     print("🛡️  AI Safety Protection Layer")
     print("=" * 40)
 
@@ -26,7 +27,7 @@ if __name__ == '__main__':
     
     # Run the app
     port = int(os.getenv('PORT', 5000))
-    debug = False
+    debug = True
     
     print(f"\n🚀 Starting server on http://localhost:{port}")
     print("\nAvailable endpoints:")
