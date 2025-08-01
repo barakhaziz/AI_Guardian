@@ -19,24 +19,34 @@ TARGET_MODEL=microsoft/DialoGPT-small
 TARGET_MODEL_TYPE=huggingface
 ```
 
-For production use - replace with `meta-llama/Llama-Guard-3-8B`
-## Create a new python environment
+## Clone project
 ```bash
-python -m venv .venv
-pip install -r uv
+git clone https://github.com/barakhaziz/AI_Guardian.git
 ```
 
-## 
+## Install uv
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv --version
+```
+
+## Sync the Project
 ```bash
 uv sync
 ```
 
-# How to Run
-## 🚀 Quick Start
-
-
+# How to Run Evaluations
+```bash
+uv run evaluation_asr.py
+```
+You have the option to add the argments:  
+`--no-conversation` for checking only the user prompt  
+`--limit` to limit the amount of samples  
+`--split` to select which split of the dataset to select  
+`--category` to select specifc categories  
 
 # Start the server
+```bash
 uv run python run_app.py
 ```
 

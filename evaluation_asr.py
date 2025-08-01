@@ -84,36 +84,27 @@ RAW2BUCKET: dict[str, str] = {
 ###############################################################################
 # 2.  Core evaluation routine
 ###############################################################################
+# 2.  Core evaluation routine
 def evaluate(
     judge,
-    split: str        = "330k_train",
+    split: str = "330k_train",
     limit: int | None = 1000,
-    filter_bucket: str | None = None,        #  ⬅︎ new
+    filter_bucket: str | None = None,
+    conversation: bool = True,                      # ⬅︎ NEW
 ):
-
     """Run *judge* over BeaverTails and print metrics incl. per-bucket ASR."""
 
     print(f"Loading BeaverTails split '{split}' …", file=sys.stderr)
     ds = load_dataset("PKU-Alignment/BeaverTails", split=split)
 
-    # if limit:
-    #     ds = ds.select(range(limit))
-    #     print(f"Evaluating on a subset of {limit} samples.", file=sys.stderr)
-
-    # ------------------------------------------------------------
-    # bookkeeping arrays
     y_true, y_pred = [], []
+    asr = defaultdict(lambda: {"total": 0, "slipped": 0})
 
-    # ASR counters:  {bucket: {'total': int, 'slipped': int}}
-    asr        = defaultdict(lambda: {"total": 0, "slipped": 0})
-
-    # ------------------------------------------------------------
-    # evaluation loop
     counter = 0
     for row in ds:
-        if counter >= limit:
+        if limit is not None and counter >= limit:  # ⬅︎ handle None
             break
-        # 0️⃣  Which bucket(s) does this row belong to?
+
         raw_tags = (
             [k for k, v in row["category"].items() if v]
             if isinstance(row["category"], dict)
@@ -121,27 +112,82 @@ def evaluate(
         )
         buckets = {RAW2BUCKET[tag] for tag in raw_tags if tag in RAW2BUCKET}
 
-        # ⬅︎ EARLY EXIT: skip rows outside the selected bucket
         if filter_bucket and filter_bucket not in buckets:
             continue
         counter += 1
-        # 1️⃣  Now run the model only on rows we’re keeping
+
         prompt   = row["prompt"]
         response = row.get("response")
 
-        pred = judge.judge(prompt, response, single_prompt=False)   # conversation
+        # ⬅︎ ONLY prompt when conversation=False
+        if conversation:
+            pred = judge.judge(prompt, None, single_prompt=True)
+            if pred == "safe":
+                pred = judge.judge(prompt, response, single_prompt=False)
+        else:
+            pred = judge.judge(prompt, None, single_prompt=True)
+
         gold = "safe" if row["is_safe"] else "unsafe"
         pred = pred.strip().lower()
 
         y_true.append(gold)
         y_pred.append(pred)
 
-        # 2️⃣  ASR counters (only for rows with gold == unsafe)
         if gold == "unsafe":
             for b in buckets:
-                asr[b]["total"]        += 1
+                asr[b]["total"] += 1
                 if pred == "safe":
                     asr[b]["slipped"] += 1
+
+    acc = accuracy_score(y_true, y_pred)
+    cm  = confusion_matrix(y_true, y_pred, labels=LABELS)
+
+    mode_label = "Messages (prompt + response)" if conversation else "Prompts only"
+    print(f"\n=== Classification report – {mode_label} ===")
+    print(classification_report(y_true, y_pred, target_names=LABELS))
+    print("Accuracy:", f"{acc*100:.2f}%")
+
+    import os, matplotlib
+    fig, ax = plt.subplots(figsize=(4, 4))
+    im = ax.imshow(cm, interpolation="nearest")
+    fig.colorbar(im, ax=ax)
+    ax.set(
+        xticks=range(len(LABELS)), yticks=range(len(LABELS)),
+        xticklabels=LABELS, yticklabels=LABELS,
+        ylabel="True label", xlabel="Predicted label",
+        title=f"BeaverTails confusion – {'Messages' if conversation else 'Prompts'}",
+    )
+    thresh = cm.max() / 2
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        ax.text(j, i, f"{cm[i, j]:d}", ha="center", va="center",
+                color="white" if cm[i, j] > thresh else "black")
+    plt.tight_layout()
+
+    backend = matplotlib.get_backend().lower()
+    if backend.endswith("agg") or not plt.isinteractive():
+        outdir = os.getenv("ASR_OUT", ".")
+        os.makedirs(outdir, exist_ok=True)
+        outpath = os.path.join(outdir, "confusion_matrix_messages.png")
+        fig.savefig(outpath, dpi=200, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Saved confusion matrix to {outpath}")
+    else:
+        plt.show()
+
+    print("\n=== Attack-Success-Rate (ASR) by category ===")
+    buckets_to_show = [filter_bucket] if filter_bucket else TARGET_BUCKETS
+    print("{:<24} {:>12}".format("Category", "ASR-conv"))
+    for bucket in buckets_to_show:
+        t = asr[bucket]["total"]
+        rate = asr[bucket]["slipped"] / t if t else None
+        print("{:<24} {:>12}".format(bucket, "—" if rate is None else f"{rate*100:5.1f} %"))
+
+    return {
+        "accuracy_messages": acc,
+        "confusion_matrix_messages": cm,
+        "asr_messages": {b: asr[b] for b in TARGET_BUCKETS},
+    }
+
 
     # ------------------------------------------------------------
     # aggregate metrics
@@ -153,16 +199,17 @@ def evaluate(
     print(classification_report(y_true, y_pred, target_names=LABELS))
     print("Accuracy:", f"{acc*100:.2f}%")
 
-    # ---------- confusion matrices ----------
+    import os, matplotlib
+
     # ---------- confusion matrix ----------
     fig, ax = plt.subplots(figsize=(4, 4))
-    im = ax.imshow(cm, interpolation="nearest")
+    im = ax.imshow(cm, interpolation="nearest", cmap="Blues")  # e.g., "viridis", "Greens", "magma"
     fig.colorbar(im, ax=ax)
     ax.set(
         xticks=range(len(LABELS)), yticks=range(len(LABELS)),
         xticklabels=LABELS, yticklabels=LABELS,
         ylabel="True label", xlabel="Predicted label",
-        title="BeaverTails confusion – Messages",
+        title="BeaverTails confusion - conversation",
     )
     thresh = cm.max() / 2
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
@@ -170,7 +217,18 @@ def evaluate(
                 ha="center", va="center",
                 color="white" if cm[i, j] > thresh else "black")
     plt.tight_layout()
-    plt.show()
+
+    # --- show if interactive backend; otherwise save to file ---
+    backend = matplotlib.get_backend().lower()
+    if backend.endswith("agg") or not plt.isinteractive():
+        outdir = os.getenv("ASR_OUT", ".")
+        os.makedirs(outdir, exist_ok=True)
+        outpath = os.path.join(outdir, "confusion_matrix_messages.png")
+        fig.savefig(outpath, dpi=200, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Saved confusion matrix to {outpath}")
+    else:
+        plt.show()
 
     # ---------- ASR table ----------
     print("\n=== Attack-Success-Rate (ASR) by category ===")
@@ -198,12 +256,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("--split", default="330k_test",
                         help="Dataset split to use (default: 330k_test)")
-    parser.add_argument("--limit", type=int, default=1000,
+    parser.add_argument("--limit", type=int, default=10000,
                         help="Sample limit (0/None = full split)")
     parser.add_argument("--no-conversation", action="store_false",
                         dest="conversation",
                         help="Judge only the prompt (default: prompt + response)")
-    #  NEW FLAG ⬇︎
     parser.add_argument(
         "-c", "--category",
         choices=TARGET_BUCKETS,
@@ -218,10 +275,11 @@ if __name__ == "__main__":
     guard_model = os.getenv("GUARD_MODEL", "llama-guard3")  # ensure the model is set
     ollama_url = os.getenv("OLLAMA_URL", "http://localhost:11434")  # ensure the Ollama URL is set
     judge = JudgeLLM(model_name=guard_model, ollama_url=ollama_url)
-
+    print(args.conversation)
     evaluate(
         judge,
         split=args.split,
         limit=args.limit if args.limit != 0 else None,
-        filter_bucket=args.category,  # use the new filter_bucket argument
+        filter_bucket=args.category,
+        conversation=args.conversation,   # ⬅︎ pass it
     )
